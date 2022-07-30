@@ -93,9 +93,9 @@ class Cointegration:
     
     def check_open(self):
 
-        limit_in = self.residuals.std() * self.z_score_in
+        self.limit_in = self.residuals.std() * self.z_score_in
 
-        if abs(self.residuals[-1]) > limit_in:
+        if abs(self.residuals.iloc[-1]) > self.limit_in:
             return True
         else:
             return False
@@ -103,10 +103,10 @@ class Cointegration:
 
     def check_close(self):
 
-        close_limit = self.residuals.std() * self.z_score_close
-        stop_limit = self.residuals.std() * self.z_score_stop
+        close_limit = self.residuals.std() * self.z_score_out
+        stop_limit = (self.residuals.std() * self.z_score_in) + self.z_score_stop
 
-        if  close_limit > abs(self.residuals[-1]) or abs(self.residuals[-1]) > stop_limit:
+        if  close_limit > abs(self.residuals.iloc[-1]) or abs(self.residuals.iloc[-1]) > stop_limit:
             return True
         else:
             return False
