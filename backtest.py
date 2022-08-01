@@ -10,7 +10,7 @@ global bd, coint, permut
 bd = pd.read_excel('BD COMPLETO.xlsx')
 bd.dropna(axis=0, inplace=True)
 bd.set_index('Data', inplace=True)
-bd = bd.loc['2018-02-27': '2019-03-02']
+# bd = bd.loc['2018-02-27': '2019-03-02']
 
 bd = bd.apply(pd.to_numeric)
 
@@ -39,7 +39,7 @@ def cointegrated(pair):
         pass
 
 
-def backtest(pair, train_size=200):
+def backtest(pair, train_size=103):
 
     first_stock, scnd_stock = pair
     test_size = len(bd) - train_size
@@ -113,7 +113,7 @@ def backtest(pair, train_size=200):
     return results_dict
 
 
-def executer(permut=permut[:500], n_workers=7):
+def executer(permut=permut, n_workers=7):
 
     # if __name__ == '__main__':
 
@@ -129,9 +129,6 @@ def executer(permut=permut[:500], n_workers=7):
 
 # start = time.time()
 
-# results = executer(permut[:])
+# results = executer()
 # print(time.time() - start)
-# # print(results)
-
-# df_list = [pd.DataFrame(d) for d in results]
-# df = pd.concat(df_list)
+# print(results)
