@@ -39,7 +39,7 @@ def cointegrated(pair):
         pass
 
 
-def backtest(pair, train_size=103):
+def backtest(pair, train_size=182):
 
     first_stock, scnd_stock = pair
     test_size = len(bd) - train_size
@@ -119,6 +119,7 @@ def executer(permut=permut, n_workers=7):
 
     # with Pool(7) as p:
     #     results = p.imap(cointegrated, permut)
+
     results = process_map(backtest, permut, max_workers=n_workers, chunksize=1)
     # results = [ ele for ele in results if ele is not None]
 
