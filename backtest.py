@@ -8,16 +8,18 @@ from tqdm.contrib.concurrent import process_map, thread_map # or thread_map
 
 class Executer(Cointegration):
 
-    def __init__(self, bd, permut, coint):
+    def __init__(self, bd, permut, coint, train_size=252):
 
         self.bd = bd
         self.permut = permut
         self.coint = coint
+        self.train_size = train_size
 
-    def backtest(self, pair, train_size=182):
 
+    def backtest(self, pair):
+        
         first_stock, scnd_stock = pair
-        test_size = len(self.bd) - train_size
+        test_size = len(self.bd) - self.train_size
 
         status = False
 
@@ -32,9 +34,13 @@ class Executer(Cointegration):
         op_id = -1
 
         for i in range(test_size):
-
-            test = self.bd.iloc[i: train_size + i, ][[first_stock, scnd_stock]]
+    
+            test = self.bd.iloc[ : self.train_size + i][[first_stock, scnd_stock]][-self.train_size:]
             
+            # If exist missing values in any stock
+            if test.isna().any().any():
+                return []
+
             if not status:
 
                 coint_test = self.coint.cointegration_test(first_stock=test[first_stock], scnd_stock=test[scnd_stock])
