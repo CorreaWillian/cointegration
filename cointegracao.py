@@ -27,19 +27,21 @@ class Cointegration:
         Check if series is I(1)
         Calculates dick-fulley test in level and first difference
         to check if series is not stationary in level but is in first difference.
-        Returns stock ticker if pass the test.
+        Returns True if pass the test.
         """
 
         # ADF test in level
-        adf_level = ts.adfuller(col, regression='ctt')
+        adf_level = ts.adfuller(col, regression='c')
 
         # ADF test in first difference
-        adf_first_diff = ts.adfuller(np.diff(col), regression='ctt')
+        adf_first_diff = ts.adfuller(np.diff(col), regression='c')
 
         # Check if is not stationary in level but is in first difference
         if adf_level[1] > self.significance and self.significance > adf_first_diff[1]:
-            # Return the stock ticker if pass the test
-            return col.name
+            # Return True if pass
+            return True
+        else:
+            return False
 
 
     def regression(self, first_stock, scnd_stock):
@@ -76,6 +78,10 @@ class Cointegration:
         Returns True for cointegrated or False if not cointegrated
         """
 
+        # Check if stocks are I(1)
+        if not (self.adf(first_stock) and self.adf(scnd_stock)):
+            return False
+
         self.regression(first_stock, scnd_stock)
 
         # Performs dickey-fuller test in regression residuals
@@ -91,9 +97,34 @@ class Cointegration:
             return False
 
     
+    def halflife(self):
+
+        """
+        Calculates half life for mean reverting.
+        """
+
+        # Regression residual first difference
+        residual_lag = self.residuals.diff().fillna(method='bfill')
+        residual_lag = sm.add_constant(residual_lag)
+        # print(residual_lag)
+        # print('-'*30)
+        # print(self.residuals)
+        # Regression residuals with residual_lag
+        model = sm.OLS(residual_lag, self.residuals)
+        res_reg = model.fit()
+
+        self.half_life = (round(np.log(2) / res_reg.params[1])).item()
+        
+        return self.half_life
+        
+    
     def check_open(self):
 
-        self.limit_in = self.residuals.std() * self.z_score_in
+        """
+        Checks if pair meets the requirements to open position
+        """
+
+        self.limit_in = self.residuals.mean() + (self.residuals.std() * self.z_score_in)
 
         if abs(self.residuals.iloc[-1]) > self.limit_in:
             return True
@@ -101,12 +132,27 @@ class Cointegration:
             return False
     
 
-    def check_close(self):
+    def close_limits(self):
 
-        close_limit = self.residuals.std() * self.z_score_out
-        stop_limit = (self.residuals.std() * self.z_score_in) + self.z_score_stop
+        """
+        Create the requirements to close position
+        """
 
-        if  close_limit > abs(self.residuals.iloc[-1]) or abs(self.residuals.iloc[-1]) > stop_limit:
+        close_limit =  self.residuals.mean() + (self.residuals.std() * self.z_score_out)
+        stop_limit = self.residuals.mean() + ((self.residuals.std() * self.z_score_in) + self.z_score_stop)
+        
+        return close_limit, stop_limit
+
+
+    def check_close(self, close_limit, stop_limit, days_open):
+
+        """
+        Checks if pair meets the requirements to close position
+        """
+        # close_limit =  self.residuals.mean() + (self.residuals.std() * self.z_score_out)
+        # stop_limit = self.residuals.mean() + ((self.residuals.std() * self.z_score_in) + self.z_score_stop)
+
+        if  (close_limit > abs(self.residuals.iloc[-1])) or (abs(self.residuals.iloc[-1]) > stop_limit) or (days_open > self.half_life):
             return True
         else:
             return False
