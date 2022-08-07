@@ -1,7 +1,10 @@
+from arch import arch_model
 import pandas as pd
 import numpy as np
 import statsmodels.tsa.stattools as ts
 import statsmodels.api as sm
+from arch.unitroot import engle_granger, ADF
+
 from matplotlib import pyplot as plt
 import seaborn as sns
 from multiprocessing import Pool
@@ -31,13 +34,13 @@ class Cointegration:
         """
 
         # ADF test in level
-        adf_level = ts.adfuller(col, regression='c')
+        adf_level = ADF(col, method='BIC')
 
         # ADF test in first difference
-        adf_first_diff = ts.adfuller(np.diff(col), regression='c')
+        adf_first_diff = ADF(np.diff(col), method='BIC')
 
         # Check if is not stationary in level but is in first difference
-        if adf_level[1] > self.significance and self.significance > adf_first_diff[1]:
+        if adf_level.pvalue > self.significance and self.significance > adf_first_diff.pvalue:
             # Return True if pass
             return True
         else:
@@ -73,6 +76,9 @@ class Cointegration:
 
     def cointegration_test(self, first_stock, scnd_stock):
 
+        self.first_stock = first_stock
+        self.scnd_stock = scnd_stock
+        
         """
         Series is cointegrated if regression residuals are stationary
         Returns True for cointegrated or False if not cointegrated
@@ -82,6 +88,7 @@ class Cointegration:
         if not (self.adf(first_stock) and self.adf(scnd_stock)):
             return False
 
+        """
         self.regression(first_stock, scnd_stock)
 
         # Performs dickey-fuller test in regression residuals
@@ -89,9 +96,14 @@ class Cointegration:
 
         # Gets pvalue of dickey-fuller test
         resid_pvalue = adf_resid[1]
+        """
+
+        arch_coint = engle_granger(first_stock, scnd_stock)
+        self.residuals = arch_coint.resid
+        self.beta = - arch_coint.cointegrating_vector[1]
 
         # Returs True if pvalue is lower than significance and False if not
-        if resid_pvalue < self.significance:
+        if arch_coint.pvalue < self.significance:
             return True
         else:
             return False
