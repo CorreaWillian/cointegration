@@ -51,7 +51,6 @@ class Cointegration:
 
         """
         Series is cointegrated if regression residuals are stationary
-        Returns True for cointegrated or False if not cointegrated
         """
 
         self.first_stock = first_stock
@@ -172,66 +171,9 @@ class Cointegration:
         """
         Checks if pair meets the requirements to close position
         """
-        # close_limit =  self.residuals.mean() + (self.residuals.std() * self.z_score_out)
-        # stop_limit = self.residuals.mean() + ((self.residuals.std() * self.z_score_in) + self.z_score_stop)
-
-        # var_limit = self.var() > self.residuals.pct_change()
 
         if  (close_limit > abs(self.residuals.iloc[-1])) or (abs(self.residuals.iloc[-1]) > stop_limit) or (days_open > self.half_life):
             return True
         else:
             return False
-
-
-    def plot_scatter(self):
-
-        """
-        Plots the scatterplot of stocks and its fitted regression line
-        """
-        sns.scatterplot(x=self.scnd_stock, y=self.first_stock)
-        sns.lineplot(x=self.scnd_stock, y=self.reg.fittedvalues, color='red', label='Regression')
-        
-        plt.xlabel(self.scnd_stock.name)
-        plt.ylabel(self.first_stock.name)
-        plt.legend()
-
-        plt.show()
-
-    
-    def plot_resid_bounds(self):
-
-        """
-        Plots the residual lineplot with upper and lower bounds
-        defined by z-score.
-        """
-
-        upper = self.residuals.std() * self.z_score_in
-        lower = self.residuals.std() * - self.z_score_in
-
-        sns.lineplot(x=self.residuals.index, y=self.residuals)
-
-        plt.axhline(y=self.residuals.mean(), color='red', linestyle='--', linewidth=1, label='Mean')
-        plt.axhline(y=upper, color='blue', linestyle='--', linewidth=1, label=f'+/-{self.z_score_in} z-score')
-        plt.axhline(y=lower, color='blue', linestyle='--', linewidth=1, label='_nolegend_')
-
-        plt.xlabel('Date')
-        plt.ylabel('Residuals')
-
-        plt.legend()
-        plt.show()
-        
-
-    def plot_prices(self):
-
-        """
-        Plot the pair historical prices
-        """
-
-        sns.lineplot(y=self.first_stock, x=self.first_stock.index, label=self.first_stock.name)
-        sns.lineplot(y=self.scnd_stock, x=self.scnd_stock.index, label=self.scnd_stock.name)
-
-        plt.xlabel('Date')
-        plt.ylabel('Prices')
-
-        plt.show()
 
