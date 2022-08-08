@@ -8,7 +8,7 @@ from copy import deepcopy
 
 class Executer(Cointegration):
 
-    def __init__(self, bd, permut, coint, train_size=252, twoway=False):
+    def __init__(self, bd, permut, coint, train_size=252, twoway=False, moving_limits=False):
 
         self.bd = bd
         self.permut = permut
@@ -16,6 +16,7 @@ class Executer(Cointegration):
         self.coint_temp = deepcopy(coint)
         self.train_size = train_size
         self.twoway = twoway
+        self.moving_limits = moving_limits
 
 
     def backtest(self, pair):
@@ -91,17 +92,16 @@ class Executer(Cointegration):
                 days_open += 1
 
                 self.coint.regression(test[first_stock], test[scnd_stock])
-                
+
+                # Movin Limits
+                if self.moving_limits:
+                    close_limit, stop_limit = self.coint.close_limits() 
                 #Checks if pair meets the requirements to close position
                 if self.coint.check_close(close_limit, stop_limit, days_open):
                     
                     # Set status as close and annotate the beta
                     status = 'close'
-                    beta_close = self.coint.beta
-
-                
-            # Halflife
-            
+                    beta_close = self.coint.beta            
 
             # Create the dictionary with results
             results_dict.append({

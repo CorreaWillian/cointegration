@@ -103,12 +103,12 @@ class Cointegration:
         self.beta = - arch_coint.cointegrating_vector[1]
 
         # Returs True if pvalue is lower than significance and False if not
-        if arch_coint.pvalue < self.significance:
+        if ADF(self.residuals).pvalue < self.significance:
             return True
         else:
             return False
-
     
+
     def halflife(self):
 
         """
@@ -118,10 +118,7 @@ class Cointegration:
         # Regression residual first difference
         residual_lag = self.residuals.diff().fillna(method='bfill')
         residual_lag = sm.add_constant(residual_lag)
-        # print(residual_lag)
-        # print('-'*30)
-        # print(self.residuals)
-        # Regression residuals with residual_lag
+
         model = sm.OLS(residual_lag, self.residuals)
         res_reg = model.fit()
 
@@ -142,7 +139,21 @@ class Cointegration:
             return True
         else:
             return False
+
     
+    def var(self, residual_open):
+
+        """
+        Calculate Value at Risk using residual historical data
+        """
+        
+        if residual_open > self.limit_in:
+            quantile = 1 - self.conf_var
+        else:
+            quantile = self.conf_var
+
+        return self.residuals.pct_change().sort_values().quantile(quantile)
+
 
     def close_limits(self):
 
@@ -151,7 +162,7 @@ class Cointegration:
         """
 
         close_limit =  self.residuals.mean() + (self.residuals.std() * self.z_score_out)
-        stop_limit = self.residuals.mean() + ((self.residuals.std() * self.z_score_in) + self.z_score_stop)
+        stop_limit = self.residuals.mean() + ((self.residuals.std() * (self.z_score_in + self.z_score_stop)))
         
         return close_limit, stop_limit
 
@@ -163,6 +174,8 @@ class Cointegration:
         """
         # close_limit =  self.residuals.mean() + (self.residuals.std() * self.z_score_out)
         # stop_limit = self.residuals.mean() + ((self.residuals.std() * self.z_score_in) + self.z_score_stop)
+
+        # var_limit = self.var() > self.residuals.pct_change()
 
         if  (close_limit > abs(self.residuals.iloc[-1])) or (abs(self.residuals.iloc[-1]) > stop_limit) or (days_open > self.half_life):
             return True
