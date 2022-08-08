@@ -87,16 +87,6 @@ class Cointegration:
         if not (self.adf(first_stock) and self.adf(scnd_stock)):
             return False
 
-        """
-        self.regression(first_stock, scnd_stock)
-
-        # Performs dickey-fuller test in regression residuals
-        adf_resid = ts.adfuller(self.residuals)
-
-        # Gets pvalue of dickey-fuller test
-        resid_pvalue = adf_resid[1]
-        """
-
         arch_coint = engle_granger(first_stock, scnd_stock)
         self.residuals = arch_coint.resid
         self.beta = - arch_coint.cointegrating_vector[1]
