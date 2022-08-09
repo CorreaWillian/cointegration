@@ -84,8 +84,8 @@ class Cointegration:
         Returns True for cointegrated or False if not cointegrated
         """
 
-        # if np.corrcoef(first_stock, scnd_stock)[0][1] < 0.75:
-        #     return False
+        if np.corrcoef(first_stock, scnd_stock)[0][1] < 0.90:
+            return False
 
         # Check if stocks are I(1)
         if not (self.adf(first_stock) and self.adf(scnd_stock)):
@@ -125,7 +125,7 @@ class Cointegration:
         model = sm.OLS(residual_lag, self.residuals)
         res_reg = model.fit()
 
-        self.half_life = (round(np.log(2) / res_reg.params[1])).item()
+        self.half_life = (round(np.log(2) / res_reg.params[1])).item() * 1000
         
         return self.half_life
         

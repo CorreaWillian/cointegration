@@ -37,7 +37,7 @@ def create_request(df):
 
 requests = create_request(portfolio)
 
-coint = Cointegration(z_score_out=0.5, z_score_stop=2)
+coint = Cointegration(z_score_out=0.5, z_score_stop=1000)
 train_size = 252
 # Loops over dict with initial, final dates and permutations
 # And filters the dataframe with prices with 252 days (one year)
