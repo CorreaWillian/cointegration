@@ -31,13 +31,13 @@ def create_request(df):
             
             # Select stocks of same sector and appends its permutations on dictionary
             tickers = df_sem.loc[df_sem.setor == setor, 'ticker'].to_list()
-            permut[data][-1].extend(list(combinations(tickers, 2)))
+            permut[data][-1].extend(list(permutations(tickers, 2)))
     
     return permut
 
 requests = create_request(portfolio)
 
-coint = Cointegration(z_score_out=0.5, z_score_stop=2)
+coint = Cointegration(z_score_out=0.5, z_score_stop=1000)
 train_size = 252
 # Loops over dict with initial, final dates and permutations
 # And filters the dataframe with prices with 252 days (one year)
@@ -60,7 +60,7 @@ for key, value in requests.items():
     
     # train_size = df_trading[data_pre:data_ini].shape[0] + 1        
 
-    e = Executer(df_trading, perm, coint, train_size=train_size, twoway=True, moving_limits=False)
+    e = Executer(df_trading, perm, coint, train_size=train_size, twoway=False, moving_limits=False)
 
     if __name__ == '__main__':
         dic_list.extend(e.executer())

@@ -46,7 +46,7 @@ class Executer(Cointegration):
         results_dict = []
 
         # Loop over test_size
-        for i in range(test_size):
+        for i in range(test_size+1):
             
             # Slices the dataframe until 'period' i and selects lasts 'train_size' observations
             test = self.bd.iloc[ : self.train_size + i][[first_stock, scnd_stock]][-self.train_size:]
@@ -96,8 +96,8 @@ class Executer(Cointegration):
                 # Movin Limits
                 if self.moving_limits:
                     close_limit, stop_limit = self.coint.close_limits() 
-                #Checks if pair meets the requirements to close position
-                if self.coint.check_close(close_limit, stop_limit, days_open):
+                #Checks if pair meets the requirements to close position or is last day of halfyear
+                if (test.index[-1] == self.bd.index.max()) or (self.coint.check_close(close_limit, stop_limit, days_open)):
                     
                     # Set status as close and annotate the beta
                     status = 'close'
