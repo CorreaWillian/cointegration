@@ -101,7 +101,11 @@ class Executer(Cointegration):
                     
                     # Set status as close and annotate the beta
                     status = 'close'
-                    beta_close = self.coint.beta            
+                    beta_close = self.coint.beta
+                      
+                if self.coint.var(residual_open):
+                    status = 'close'
+                    beta_close = 'VAR CLOSE'     
 
             # Create the dictionary with results
             results_dict.append({
