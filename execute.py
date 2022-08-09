@@ -31,7 +31,7 @@ def create_request(df):
             
             # Select stocks of same sector and appends its permutations on dictionary
             tickers = df_sem.loc[df_sem.setor == setor, 'ticker'].to_list()
-            permut[data][-1].extend(list(combinations(tickers, 2)))
+            permut[data][-1].extend(list(permutations(tickers, 2)))
     
     return permut
 
@@ -60,7 +60,7 @@ for key, value in requests.items():
     
     # train_size = df_trading[data_pre:data_ini].shape[0] + 1        
 
-    e = Executer(df_trading, perm, coint, train_size=train_size, twoway=True, moving_limits=False)
+    e = Executer(df_trading, perm, coint, train_size=train_size, twoway=False, moving_limits=False)
 
     if __name__ == '__main__':
         dic_list.extend(e.executer())

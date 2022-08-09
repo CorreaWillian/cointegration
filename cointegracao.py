@@ -84,6 +84,9 @@ class Cointegration:
         Returns True for cointegrated or False if not cointegrated
         """
 
+        # if np.corrcoef(first_stock, scnd_stock)[0][1] < 0.75:
+        #     return False
+
         # Check if stocks are I(1)
         if not (self.adf(first_stock) and self.adf(scnd_stock)):
             return False
