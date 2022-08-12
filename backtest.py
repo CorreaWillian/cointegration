@@ -75,17 +75,19 @@ class Executer(Cointegration):
 
             # If exist missing values in any stock test next period
             if test.isna().any().any():
-                return []
+                continue
+                # return 'é na'
 
             if (not status) and (self.idx_start_date + i >= self.idx_end_date):
                 return results_dict
           
             # Check if there isn't a open position
             if (not status) and (self.idx_start_date + i < self.idx_end_date):
-
+                
                 correlation = np.corrcoef(test[first_stock], test[scnd_stock])[0][1]
                 if correlation < self.coint.min_corr:
-                    return
+                    continue
+                    # return 'correlacao menor'
                     
                 # Cointegration test. Returns True or False
                 coint_test = self.coint.cointegration_test(first_stock=test[first_stock], scnd_stock=test[scnd_stock])
@@ -191,6 +193,7 @@ class Executer(Cointegration):
                 halflife = None
                 days_open = 0
 
+            
         return results_dict
 
 
