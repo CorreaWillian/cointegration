@@ -204,8 +204,11 @@ class Cointegration:
         """
         # close_limit =  self.residuals.mean() + (self.residuals.std() * self.z_score_out)
         # stop_limit = self.residuals.mean() + ((self.residuals.std() * self.z_score_in) + self.z_score_stop)
-
-        if  (close_limit > abs(self.residuals.iloc[-1])) or (abs(self.residuals.iloc[-1]) > stop_limit) or (days_open > self.half_life):
+        
+        # half_life_close = (days_open > self.half_life)
+        half_life_close = False
+        
+        if  (close_limit > abs(self.residuals.iloc[-1])) or (abs(self.residuals.iloc[-1]) > stop_limit) or half_life_close:
             return True
         else:
             return False

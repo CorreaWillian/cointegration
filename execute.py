@@ -9,7 +9,7 @@ from tqdm.contrib.concurrent import process_map, thread_map # or thread_map
 import gc
 
 df_prices = pd.read_excel('database.xlsx', index_col=0)
-portfolio = pd.read_excel('PORTFOLIO.xlsx')
+portfolio = pd.read_excel('PORTFOLIO2.xlsx')
 
 portfolio.replace('VIVT4', 'VIVT3',inplace=True)
 portfolio = portfolio[portfolio.ticker.isin(df_prices.columns)]
@@ -37,7 +37,7 @@ def create_request(df):
 
 requests = create_request(portfolio)
 
-coint = Cointegration(z_score_out=0.5, z_score_stop=1000, conf_var=0.1)
+coint = Cointegration(z_score_out=0.5, z_score_stop=1000, conf_var=0.05)
 
 train_size = 252
 # Loops over dict with initial, final dates and permutations

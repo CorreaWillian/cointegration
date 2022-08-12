@@ -11,6 +11,7 @@ import gc
 df_prices = pd.read_excel('database15min.xlsx', index_col=0)
 portfolio = pd.read_excel('PORTFOLIO2.xlsx')
 df_prices.set_index('time', inplace=True)
+df_prices = df_prices.loc['2019-10-01': '2020-12-12']
 
 portfolio.replace('VIVT4', 'VIVT3',inplace=True)
 portfolio = portfolio[portfolio.ticker.isin(df_prices.columns)]
@@ -38,7 +39,7 @@ def create_request(df):
 
 requests = create_request(portfolio)
 
-coint = Cointegration(z_score_out=0.5, z_score_stop=1000, conf_var=0.1)
+coint = Cointegration(z_score_out=0.5, z_score_stop=1000, conf_var=0.05)
 
 train_size = 63
 # Loops over dict with initial, final dates and permutations
