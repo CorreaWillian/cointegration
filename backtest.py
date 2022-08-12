@@ -1,16 +1,20 @@
 import pandas as pd
+import numpy as np
 from cointegracao import Cointegration
 from itertools import combinations, permutations
 import time
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map, thread_map # or thread_map
 from copy import deepcopy
+import gc
 
 class Executer(Cointegration):
 
-    def __init__(self, bd, permut, coint, train_size=252, twoway=False, moving_limits=False):
+    def __init__(self, bd, idx_start_date, idx_end_date, permut, coint, train_size=252, twoway=False, moving_limits=False):
 
         self.bd = bd
+        self.idx_start_date = idx_start_date
+        self.idx_end_date = idx_end_date
         self.permut = permut
         self.coint = coint
         self.coint_temp = deepcopy(coint)
@@ -18,6 +22,24 @@ class Executer(Cointegration):
         self.twoway = twoway
         self.moving_limits = moving_limits
 
+    def correlation_quartile(self, i):
+
+        # Calculate last quartile of correlations to accept open position
+        bd_ = self.bd.iloc[ : self.idx_start_date + i][:self.train_size].dropna(axis=1)
+        colunas = bd_.columns
+
+        corr_matrix = bd_.corr().abs()
+        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype('bool'))
+        corrs = []
+        valid_perms = [x  for x in self.permut if x[1] in colunas and x[0] in colunas]
+        for pair in valid_perms:
+            corr = upper.loc[pair[0], pair[1]] 
+            if str(corr) != 'nan':       
+                corrs.append(corr)
+
+        min_corr = np.quantile(sorted(corrs), 0.75)
+    
+        return min_corr
 
     def backtest(self, pair):
 
@@ -46,18 +68,25 @@ class Executer(Cointegration):
         results_dict = []
 
         # Loop over test_size
-        for i in range(test_size+1):
+        for i in range(self.bd.shape[0]+1):
             
             # Slices the dataframe until 'period' i and selects lasts 'train_size' observations
-            test = self.bd.iloc[ : self.train_size + i][[first_stock, scnd_stock]][-self.train_size:]
-            
+            test = self.bd.iloc[ : self.idx_start_date + i][[first_stock, scnd_stock]][-self.train_size:]
+
             # If exist missing values in any stock test next period
             if test.isna().any().any():
                 return []
 
-            # Check if there's a open position
-            if not status:
-                
+            if (not status) and (self.idx_start_date + i >= self.idx_end_date):
+                return results_dict
+          
+            # Check if there isn't a open position
+            if (not status) and (self.idx_start_date + i < self.idx_end_date):
+
+                correlation = np.corrcoef(test[first_stock], test[scnd_stock])[0][1]
+                if correlation < self.coint.min_corr:
+                    return
+                    
                 # Cointegration test. Returns True or False
                 coint_test = self.coint.cointegration_test(first_stock=test[first_stock], scnd_stock=test[scnd_stock])
 
@@ -82,13 +111,18 @@ class Executer(Cointegration):
                     close_limit, stop_limit = self.coint.close_limits()             
                     status = True
                     halflife = self.coint.halflife()
+                    correlation_limit = self.coint.min_corr
+                    # var_limit = self.coint.var(open_price_first_stock, open_price_scnd_stock)
+                    var_limit = 'DESLIGADO'
+
+                    # correlation = self.coint.correlation
 
                 else:
                     continue
 
             # If there's a open position
-            else:
-
+            elif status:
+                
                 days_open += 1
 
                 self.coint.regression(test[first_stock], test[scnd_stock])
@@ -102,10 +136,17 @@ class Executer(Cointegration):
                     # Set status as close and annotate the beta
                     status = 'close'
                     beta_close = self.coint.beta
-                      
-                if self.coint.var(residual_open):
-                    status = 'close'
-                    beta_close = 'VAR CLOSE'     
+
+                # # VAR close
+                # if open_price_first_stock > open_price_scnd_stock:
+                #     ratio = (test[scnd_stock]/test[first_stock]).pct_change()[-1]
+                # else:
+                #     ratio = (test[first_stock]/test[scnd_stock]).pct_change()[-1]
+
+                # # usar var fixo
+                # if ratio < var_limit:
+                #     status = 'close'
+                #     beta_close = 'VAR CLOSE' 
 
             # Create the dictionary with results
             results_dict.append({
@@ -127,7 +168,10 @@ class Executer(Cointegration):
                 'close_limit': close_limit,
                 'stop_limit': stop_limit,
                 'halflife': halflife,
-                'days_open': days_open
+                'days_open': days_open,
+                'correlation': correlation,
+                'correlation_limit': self.coint.min_corr,
+                'var_limit': var_limit
                 })
 
             # Reinitiate the variables

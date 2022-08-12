@@ -52,7 +52,7 @@ class Cointegration:
     def regression(self, first_stock, scnd_stock):
 
         """
-        Series is cointegrated if regression residuals are stationary
+        Series is cointegrated if regression residuals are stationary.
         Returns True for cointegrated or False if not cointegrated
         """
 
@@ -82,12 +82,15 @@ class Cointegration:
         self.scnd_stock = scnd_stock
         
         """
-        Series is cointegrated if regression residuals are stationary
+        Series is cointegrated if regression residuals are stationary.
         Returns True for cointegrated or False if not cointegrated
         """
 
-        if np.corrcoef(first_stock, scnd_stock)[0][1] < self.min_corr:
-            return False
+        # self.correlation = np.corrcoef(first_stock, scnd_stock)[0][1]
+        # self.min_corr = self.correlation_quartile(test, perm)
+
+        # if self.correlation < self.min_corr:
+        #     return False
 
         # Check if stocks are I(1)
         if not (self.adf(first_stock) and self.adf(scnd_stock)):
@@ -127,7 +130,7 @@ class Cointegration:
         model = sm.OLS(residual_lag, self.residuals)
         res_reg = model.fit()
 
-        self.half_life = (round(np.log(2) / res_reg.params[1])).item() * 1000
+        self.half_life = (round(np.log(2) / res_reg.params[1])).item()
         
         return self.half_life
         
@@ -146,27 +149,41 @@ class Cointegration:
             return False
 
     
-    def var(self, residual_open):
+    # def correlation_quartile(self, test, perm):
+
+    #     # Calculate last quartile of correlations to accept open position
+
+    #     corr_matrix = test.corr().abs()
+    #     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype('bool'))
+    #     corrs = []
+    #     valid_perms = [x  for x in perm if x[1] in test.columns and x[0] in test.columns]
+    #     for pair in valid_perms:
+    #         corr = upper.loc[pair[0], pair[1]] 
+    #         if str(corr) != 'nan':       
+    #             corrs.append(corr)
+
+    #     print(corrs)
+    #     self.min_corr = np.quantile(sorted(corrs), 0.75)
+        
+    #     return self.min_corr
+
+    
+    def var(self, open_price_first_stock, open_price_scnd_stock):
 
         """
         Calculate Value at Risk using residual historical data
         Returns True to close position
         """
-        
-        if residual_open > self.limit_in:
 
-            quantile = 1 - self.conf_var
-            self.var_limit = self.residuals.pct_change().sort_values().quantile(quantile)
-
-            if self.residuals.pct_change()[-1] > self.var_limit:
-                return True
+        if open_price_first_stock < open_price_scnd_stock:         
+            ratio = (self.first_stock/self.scnd_stock).pct_change()
         else:
+            ratio = (self.scnd_stock/self.first_stock).pct_change()
 
-            quantile = self.conf_var
-            self.var_limit = self.residuals.pct_change().sort_values().quantile(quantile)
+        var = ratio.sort_values().quantile(self.conf_var)
 
-            if self.residuals.pct_change()[-1] < self.var_limit:
-                return True
+        return var
+
 
     def close_limits(self):
 

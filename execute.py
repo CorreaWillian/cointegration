@@ -6,7 +6,7 @@ import time
 from backtest import Executer
 from tqdm.contrib.concurrent import process_map, thread_map # or thread_map
 
-
+import gc
 
 df_prices = pd.read_excel('database.xlsx', index_col=0)
 portfolio = pd.read_excel('PORTFOLIO.xlsx')
@@ -38,6 +38,7 @@ def create_request(df):
 requests = create_request(portfolio)
 
 coint = Cointegration(z_score_out=0.5, z_score_stop=1000, conf_var=0.1)
+
 train_size = 252
 # Loops over dict with initial, final dates and permutations
 # And filters the dataframe with prices with 252 days (one year)
@@ -55,12 +56,25 @@ for key, value in requests.items():
     index_fin = df_prices.index.get_indexer(target=[value[0]], method='ffill').item()
 
     perm = value[1]
-    
-    df_trading = df_prices.iloc[index_pre: index_fin]
+
+    corr_df = df_prices[:index_ini][-train_size: ]
+    correlations = {}
+    for pair in perm:
+        correlations[pair] = corr_df[list(pair)].corr().iloc[0][1]
+
+    last_quartile_corr = pd.DataFrame([correlations]).T.sort_values(by=0).quantile(0.75)
+
+    coint.min_corr = last_quartile_corr.item()
+    # coint.min_corr = 0.9
+
+    # df_trading = df_prices.iloc[index_pre: index_fin]
+
     
     # train_size = df_trading[data_pre:data_ini].shape[0] + 1        
 
-    e = Executer(df_trading, perm, coint, train_size=train_size, twoway=False, moving_limits=False)
+    e = Executer(bd=df_prices, idx_start_date=index_ini, idx_end_date=index_fin, permut=perm, coint=coint, train_size=train_size, twoway=False, moving_limits=False)
 
     if __name__ == '__main__':
         dic_list.extend(e.executer())
+        del e
+        gc.collect()
