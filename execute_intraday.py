@@ -11,10 +11,11 @@ import gc
 df_prices = pd.read_excel('database15min.xlsx', index_col=0)
 portfolio = pd.read_excel('PORTFOLIO2.xlsx')
 df_prices.set_index('time', inplace=True)
-df_prices = df_prices.loc['2019-10-01': '2020-12-12']
+df_prices = df_prices.loc['2019-06-01': '2020-12-12']
 
 portfolio.replace('VIVT4', 'VIVT3',inplace=True)
 portfolio = portfolio[portfolio.ticker.isin(df_prices.columns)]
+portfolio = portfolio.set_index('data_ini')['2020':'2020-01-01'].reset_index()
 
 def create_request(df):
     # Permutation over same sectors stocks
@@ -41,7 +42,7 @@ requests = create_request(portfolio)
 
 coint = Cointegration(z_score_out=0.5, z_score_stop=1000, conf_var=0.05)
 
-train_size = 63
+train_size = 63 * 27
 # Loops over dict with initial, final dates and permutations
 # And filters the dataframe with prices with 252 days (one year)
 # of formation data and 6 months of trading data
@@ -50,7 +51,7 @@ dic_list = []
 for key, value in requests.items():
     
     data_ini = key
-    data_pre =  data_ini - np.timedelta64(500, 'm')
+    data_pre =  data_ini - np.timedelta64(500, '15m')
     data_fin = value[0]
 
     index_ini = df_prices.index.get_indexer(target=[key], method='ffill').item()

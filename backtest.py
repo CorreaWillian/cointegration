@@ -64,6 +64,9 @@ class Executer(Cointegration):
         halflife = None
         days_open = 0
         op_id = -1
+        
+        # Authorization to open position
+        auth_in_std_resid = True
 
         results_dict = []
 
@@ -79,12 +82,15 @@ class Executer(Cointegration):
                 # return 'é na'
 
             if (not status) and (self.idx_start_date + i >= self.idx_end_date):
+                # print('o tempo acabou')
                 return results_dict
           
             # Check if there isn't a open position
             if (not status) and (self.idx_start_date + i < self.idx_end_date):
                 
+
                 correlation = np.corrcoef(test[first_stock], test[scnd_stock])[0][1]
+                
                 if correlation < self.coint.min_corr:
                     continue
                     # return 'correlacao menor'
@@ -93,8 +99,7 @@ class Executer(Cointegration):
                 coint_test = self.coint.cointegration_test(first_stock=test[first_stock], scnd_stock=test[scnd_stock])
 
                 # Checks if pair is meets the requirements to open position
-                if coint_test and self.coint.check_open():
-                    
+                if coint_test and self.coint.check_open(auth_in_std_resid):
                     # If True, verify if the inverse pair meets the conditions to open position
                     if self.twoway:
                         coint_temp_test = self.coint_temp.cointegration_test(first_stock=test[scnd_stock], scnd_stock=test[first_stock])
@@ -114,12 +119,26 @@ class Executer(Cointegration):
                     status = True
                     halflife = self.coint.halflife()
                     correlation_limit = self.coint.min_corr
-                    # var_limit = self.coint.var(open_price_first_stock, open_price_scnd_stock)
-                    var_limit = 'DESLIGADO'
+                    var_limit = self.coint.var(open_price_first_stock, open_price_scnd_stock)
+                    # var_limit = 'DESLIGADO'
 
                     # correlation = self.coint.correlation
 
-                else:
+                # If there's not open position and not meet the requirements to open
+                else: 
+                    if not auth_in_std_resid:
+                        
+                        # Auth to open position
+                        try:
+                            residuo = self.coint.residuals
+                        except:
+                            self.coint.regression(test[first_stock], test[scnd_stock])
+                            residuo = self.coint.residuals
+                        
+                        # Auth if desvio under 2 once
+                        if abs(residuo[-1]) <= 2 * abs(residuo.std()):
+                            auth_in_std_resid = True
+
                     continue
 
             # If there's a open position
@@ -129,7 +148,7 @@ class Executer(Cointegration):
 
                 self.coint.regression(test[first_stock], test[scnd_stock])
 
-                # Movin Limits
+                # Moving Limits
                 if self.moving_limits:
                     close_limit, stop_limit = self.coint.close_limits() 
                 #Checks if pair meets the requirements to close position or is last day of halfyear
@@ -139,17 +158,17 @@ class Executer(Cointegration):
                     status = 'close'
                     beta_close = self.coint.beta
 
-                # # VAR close
-                # if open_price_first_stock > open_price_scnd_stock:
-                #     ratio = (test[scnd_stock]/test[first_stock]).pct_change()[-1]
-                # else:
-                #     ratio = (test[first_stock]/test[scnd_stock]).pct_change()[-1]
+                # VAR close
+                if open_price_first_stock > open_price_scnd_stock:
+                    ratio = (test[scnd_stock]/test[first_stock]).pct_change()[-1]
+                else:
+                    ratio = (test[first_stock]/test[scnd_stock]).pct_change()[-1]
 
-                # # usar var fixo
-                # if ratio < var_limit:
-                #     status = 'close'
-                #     beta_close = 'VAR CLOSE' 
-
+                # usar var fixo
+                if ratio < var_limit:
+                    status = 'close'
+                    beta_close = 'VAR CLOSE' 
+            
             # Create the dictionary with results
             results_dict.append({
                 # 'op_id': op_id,
@@ -175,9 +194,16 @@ class Executer(Cointegration):
                 'correlation_limit': self.coint.min_corr,
                 'var_limit': var_limit
                 })
+            
+            if (self.idx_start_date + i >= self.idx_end_date):
+                status = 'close'
 
             # Reinitiate the variables
             if status == 'close':
+
+                residuo = self.coint.residuals
+                if abs(residuo[-1]) > self.coint.z_score_out * abs(residuo.std()):
+                    auth_in_std_resid = False
 
                 status = False
                 op_id = -1
@@ -193,7 +219,6 @@ class Executer(Cointegration):
                 halflife = None
                 days_open = 0
 
-            
         return results_dict
 
 

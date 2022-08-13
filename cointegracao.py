@@ -131,11 +131,11 @@ class Cointegration:
         res_reg = model.fit()
 
         self.half_life = (round(np.log(2) / res_reg.params[1])).item()
-        
+        self.half_life = 'DESLIGADO'
         return self.half_life
         
     
-    def check_open(self):
+    def check_open(self, auth_in_std_resid):
 
         """
         Checks if pair meets the requirements to open position
@@ -143,9 +143,11 @@ class Cointegration:
 
         self.limit_in = self.residuals.mean() + (self.residuals.std() * self.z_score_in)
 
-        if abs(self.residuals.iloc[-1]) > self.limit_in:
+        if (abs(self.residuals.iloc[-1]) > self.limit_in) and (auth_in_std_resid):
+            # print('cointegrou')
             return True
         else:
+            # print('nao cointegrou')
             return False
 
     
@@ -207,8 +209,11 @@ class Cointegration:
         
         # half_life_close = (days_open > self.half_life)
         half_life_close = False
+
+        mean_reverted = (close_limit > abs(self.residuals.iloc[-1]))
+        stopped_limit = (abs(self.residuals.iloc[-1]) > stop_limit)
         
-        if  (close_limit > abs(self.residuals.iloc[-1])) or (abs(self.residuals.iloc[-1]) > stop_limit) or half_life_close:
+        if mean_reverted or stopped_limit or half_life_close:
             return True
         else:
             return False
