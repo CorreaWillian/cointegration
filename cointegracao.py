@@ -38,10 +38,10 @@ class Cointegration:
         """
 
         # ADF test in level
-        adf_level = ADF(col, method='BIC')
+        adf_level = ADF(col, method='bic')
 
         # ADF test in first difference
-        adf_first_diff = ADF(np.diff(col), method='BIC')
+        adf_first_diff = ADF(np.diff(col), method='bic')
 
         # Check if is not stationary in level but is in first difference
         if adf_level.pvalue > self.significance and self.significance > adf_first_diff.pvalue:
