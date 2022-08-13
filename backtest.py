@@ -119,8 +119,11 @@ class Executer(Cointegration):
                     status = True
                     halflife = self.coint.halflife()
                     correlation_limit = self.coint.min_corr
-                    var_limit = self.coint.var(open_price_first_stock, open_price_scnd_stock)
-                    # var_limit = 'DESLIGADO'
+
+                    if self.coint.usar_var.lower() == 'desligado':
+                        var_limit = 'DESLIGADO'
+                    else:
+                        var_limit = self.coint.var(open_price_first_stock, open_price_scnd_stock)
 
                     # correlation = self.coint.correlation
 
@@ -159,15 +162,16 @@ class Executer(Cointegration):
                     beta_close = self.coint.beta
 
                 # VAR close
-                if open_price_first_stock > open_price_scnd_stock:
-                    ratio = (test[scnd_stock]/test[first_stock]).pct_change()[-1]
-                else:
-                    ratio = (test[first_stock]/test[scnd_stock]).pct_change()[-1]
+                if self.coint.usar_var.lower() != 'desligado':
+                    if open_price_first_stock > open_price_scnd_stock:
+                        ratio = (test[scnd_stock]/test[first_stock]).pct_change()[-1]
+                    else:
+                        ratio = (test[first_stock]/test[scnd_stock]).pct_change()[-1]
 
-                # usar var fixo
-                if ratio < var_limit:
-                    status = 'close'
-                    beta_close = 'VAR CLOSE' 
+                    # usar var fixo
+                    if ratio < var_limit:
+                        status = 'close'
+                        beta_close = 'VAR CLOSE' 
             
             # Create the dictionary with results
             results_dict.append({

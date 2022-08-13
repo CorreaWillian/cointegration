@@ -15,7 +15,7 @@ from tqdm.contrib.concurrent import process_map, thread_map # or thread_map
 
 class Cointegration:
 
-    def __init__(self, significance=0.05, constant=True, z_score_in=2, z_score_out=0.5, z_score_stop=1, conf_var=0.05, min_corr=0.9):
+    def __init__(self, significance=0.05, constant=True, z_score_in=2, z_score_out=0.5, z_score_stop=1, conf_var=0.05, min_corr=0.9, usar_halflife='desligado', usar_var='ligado'):
 
         self.significance = significance
         self.constant = constant
@@ -24,6 +24,8 @@ class Cointegration:
         self.z_score_stop = z_score_stop
         self.conf_var = conf_var
         self.min_corr = min_corr
+        self.usar_halflife = usar_halflife
+        self.usar_var = usar_var
 
 
     def adf(self, col):
@@ -207,8 +209,10 @@ class Cointegration:
         # close_limit =  self.residuals.mean() + (self.residuals.std() * self.z_score_out)
         # stop_limit = self.residuals.mean() + ((self.residuals.std() * self.z_score_in) + self.z_score_stop)
         
-        # half_life_close = (days_open > self.half_life)
-        half_life_close = False
+        if self.usar_halflife.lower() == 'desligado':
+            half_life_close = False
+        else:
+            half_life_close = (days_open > self.half_life)
 
         mean_reverted = (close_limit > abs(self.residuals.iloc[-1]))
         stopped_limit = (abs(self.residuals.iloc[-1]) > stop_limit)

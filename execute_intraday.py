@@ -38,6 +38,7 @@ def create_request(df):
     
     return permut
 
+
 requests = create_request(portfolio)
 
 coint = Cointegration(z_score_out=0.5, z_score_stop=1000, conf_var=0.05)
