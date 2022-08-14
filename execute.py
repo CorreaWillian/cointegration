@@ -13,6 +13,7 @@ def create_request(periodo):
 
     global df_prices, portfolio
     portfolio = pd.read_excel('PORTFOLIO2.xlsx')
+    portfolio = portfolio.set_index('data_ini')['2020':'2020-01-01'].reset_index() 
 
     if periodo.lower() == 'diario':        
         df_prices = pd.read_excel('database.xlsx', index_col=0)
@@ -21,9 +22,24 @@ def create_request(periodo):
 
         df_prices = pd.read_excel('database15min.xlsx', index_col=0)
         df_prices.set_index('time', inplace=True)
-        df_prices = df_prices.loc['2019-06-01': '2020-12-12']
+        df_prices = df_prices.loc['2019-06-01': '2020-07-12']
         portfolio = portfolio.set_index('data_ini')['2020':'2020-01-01'].reset_index()    
+    
+    elif periodo.lower() == '1minutos':
 
+        df_prices = pd.read_excel('database1min.xlsx', index_col=0)
+        df_prices.set_index('time', inplace=True)
+        df_prices = df_prices.loc['2019-06-01': '2020-07-12']
+        portfolio = portfolio.set_index('data_ini')['2020':'2020-01-01'].reset_index()  
+    
+    elif periodo.lower() == '5minutos':
+
+        df_prices = pd.read_excel('database5min.xlsx', index_col=0)
+        df_prices.set_index('time', inplace=True)
+        df_prices = df_prices.loc['2019-06-01': '2020-07-12']
+        portfolio = portfolio.set_index('data_ini')['2020':'2020-01-01'].reset_index()  
+        
+        
     portfolio.replace('VIVT4', 'VIVT3',inplace=True)
     df = portfolio[portfolio.ticker.isin(df_prices.columns)]
 
