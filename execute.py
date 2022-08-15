@@ -127,7 +127,7 @@ def executa(
     return dic_list
 
 
-def calcula_retornos(dic_list):
+def calcula_retornos(dic_list, custos=0.0071):
 
     # Transforma o dicionario de resultados em dataframe
     df_list = [pd.DataFrame(d) for d in dic_list]
@@ -171,6 +171,7 @@ def calcula_retornos(dic_list):
     #     Custo saida: 1,22% + 0,25% + 0,1% = 1,57% + Aluguel
         
         aluguel = (1.0143)**((row.days_open+2)/252) -1
+        # custos = 0.0071
 
         try:
             if row.side == 'lower':
@@ -180,13 +181,13 @@ def calcula_retornos(dic_list):
                 historico_par.at[row.open_date, 'price_fst_stock'] = historico_par.at[row.open_date, 'price_fst_stock']
                 
                 # Entrada
-                historico_par.at[row.open_date, 'price_fst_stock'] = historico_par.loc[row.open_date, 'price_fst_stock'] * (1+0.0071)
-                historico_par.at[row.open_date, 'price_scnd_stock'] = historico_par.loc[row.open_date, 'price_scnd_stock'] * (1-0.0071)
+                historico_par.at[row.open_date, 'price_fst_stock'] = historico_par.loc[row.open_date, 'price_fst_stock'] * (1+custos)
+                historico_par.at[row.open_date, 'price_scnd_stock'] = historico_par.loc[row.open_date, 'price_scnd_stock'] * (1-custos)
                 
                         
                 # Saída
-                historico_par.at[row.date, 'price_fst_stock'] = historico_par.loc[row.date, 'price_fst_stock'] * (1-0.0071)
-                historico_par.at[row.date, 'price_scnd_stock'] = historico_par.loc[row.date, 'price_scnd_stock'] * (1+(0.0071+aluguel))
+                historico_par.at[row.date, 'price_fst_stock'] = historico_par.loc[row.date, 'price_fst_stock'] * (1-custos)
+                historico_par.at[row.date, 'price_scnd_stock'] = historico_par.loc[row.date, 'price_scnd_stock'] * (1+(custos+aluguel))
 
                 historico_par['ratio'] = historico_par['price_fst_stock'] / historico_par['price_scnd_stock']
                 
@@ -202,6 +203,102 @@ def calcula_retornos(dic_list):
                 # Saida
                 historico_par.at[row.date, 'price_scnd_stock'] = historico_par.loc[row.date, 'price_scnd_stock'] * (1-0.0071)
                 historico_par.at[row.date, 'price_fst_stock'] = historico_par.loc[row.date, 'price_fst_stock'] * (1+(0.0071+aluguel))
+
+                historico_par['ratio'] = historico_par['price_scnd_stock'] / historico_par['price_fst_stock']
+            
+            
+            historico_par['open_price_first_stock'] = historico_par.at[row.open_date, 'price_fst_stock']
+            historico_par['open_price_scnd_stock'] = historico_par.at[row.open_date, 'price_scnd_stock']
+            
+            historico_par['return'] = (historico_par.ratio / historico_par.ratio.shift(1)) -1
+            historico_par['retorno_acumulado'] = np.cumprod(1+historico_par['return']) -1
+            
+            historico_par['return_sem_custos'] = (historico_par.ratio_sem_custos / historico_par.ratio_sem_custos.shift(1)) -1
+            historico_par['retorno_acumulado_sem_custos'] = (np.cumprod(1+historico_par['return_sem_custos']) -1)
+            
+            returns_list.append(historico_par)
+            
+        except Exception as e:
+            pass        
+        i+=1
+
+    # Junta os retornos
+    df_returns = pd.concat(returns_list)
+    df_returns.reset_index(inplace=True)
+
+    # Filtra retornos após 2019 se houver
+    df_returns = df_returns.set_index('open_date').loc['2019-01-01':]
+    df_returns.reset_index(inplace=True)
+
+    return df_returns
+
+
+def novo_retorno(df, custo_compra, custo_venda, intraday=False):
+
+    # Inicia o calculo dos rertornos
+
+    df.loc[df['residual_open'] < df['std_open_residual'], 'side'] = 'lower'
+    df.loc[df['residual_open'] > df['std_open_residual'], 'side'] = 'upper'
+
+    i=1
+    returns_list = []       
+    closed = df.loc[df.status=='close']
+
+    for row in closed.itertuples():
+
+        historico_par = df.loc[(df.pair==row.pair) & (df.date.between(row.open_date,row.date))].copy()
+        historico_par.sort_values(by='date', inplace=True)
+        historico_par.set_index('date', inplace=True)
+        historico_par['id'] = i
+        
+    #     Custo entrada: 1,22% + 0,1% = 1,31%
+    #     Custo saida: 1,22% + 0,25% + 0,1% = 1,57% + Aluguel
+        
+        days_open = (row.date.date() - row.open_date.date()).days
+        if intraday:
+            aluguel = (1.0143)**((days_open+2)/252) -1
+        else:
+            aluguel = (1.0143)**((row.days_open+2)/252) -1
+
+
+        historico_par.at[row.open_date, 'price_fst_stock'] = historico_par.at[row.open_date,'open_price_first_stock']
+        historico_par.at[row.open_date, 'price_scnd_stock'] = historico_par.at[row.open_date, 'open_price_scnd_stock']
+
+        # Daytrade
+        if row.date.date() == row.open_date.date():
+            custo_venda = custo_compra
+            aluguel = 0
+        
+        try:
+            if row.side == 'lower':
+                
+                historico_par['ratio_sem_custos'] = historico_par['price_fst_stock'] / historico_par['price_scnd_stock']
+                
+                historico_par.at[row.open_date, 'price_fst_stock'] = historico_par.at[row.open_date, 'price_fst_stock']
+                
+                # Entrada
+                historico_par.at[row.open_date, 'price_fst_stock'] = historico_par.loc[row.open_date, 'price_fst_stock'] * (1 + custo_compra)
+                historico_par.at[row.open_date, 'price_scnd_stock'] = historico_par.loc[row.open_date, 'price_scnd_stock'] * (1 - custo_venda)
+                
+                        
+                # Saída
+                historico_par.at[row.date, 'price_fst_stock'] = historico_par.loc[row.date, 'price_fst_stock'] * (1 - custo_venda)
+                historico_par.at[row.date, 'price_scnd_stock'] = historico_par.loc[row.date, 'price_scnd_stock'] * (1 + (custo_compra+aluguel))
+
+                historico_par['ratio'] = historico_par['price_fst_stock'] / historico_par['price_scnd_stock']
+                
+            else:
+                
+                historico_par['ratio_sem_custos'] = historico_par['price_scnd_stock'] / historico_par['price_fst_stock']
+                
+                historico_par.at[row.open_date, 'price_scnd_stock'] = historico_par.loc[row.open_date, 'price_scnd_stock']
+                # Entrada
+                historico_par.at[row.open_date, 'price_scnd_stock'] = historico_par.loc[row.open_date, 'price_scnd_stock'] * (1 + custo_compra)
+                historico_par.at[row.open_date, 'price_fst_stock'] = historico_par.loc[row.open_date, 'price_fst_stock'] * (1 - custo_venda)
+
+                # Saida
+                historico_par.at[row.date, 'price_scnd_stock'] = historico_par.loc[row.date, 'price_scnd_stock'] * (1 - custo_venda)
+                historico_par.at[row.date, 'price_fst_stock'] = historico_par.loc[row.date, 'price_fst_stock'] * (1 + (custo_compra + aluguel))
 
                 historico_par['ratio'] = historico_par['price_scnd_stock'] / historico_par['price_fst_stock']
             
